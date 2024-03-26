@@ -1,0 +1,16 @@
+# This is a sample config file for the etl process
+
+spark:
+  appname: dataverse_etl_sample
+  driver:
+    memory: 16g
+etl:
+  - name: data_ingestion___jsonl___jsonl2raw
+    args:
+      path:
+        - s3://team-model-data-preprocess/moreh_corous_jsonl/네이버 뉴스_스포츠뉴스_축구_네이버스포츠_축구_2010.jsonl
+  - name: utils___sampling___random
+    args:
+      sample_n_or_frac: 0.1
+  - name: deduplication___minhash___lsh_jaccard
+  - name: data_save___huggingface___ufl2hf_obj
