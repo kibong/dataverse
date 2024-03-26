@@ -118,6 +118,8 @@ class ETLPipeline:
         spark_conf.set("spark.executor.memory", config.spark.executor.memory)
         spark_conf.set("spark.local.dir", config.spark.local.dir)
         spark_conf.set("spark.ui.port", config.spark.ui.port)
+        spark_conf.set("spark.pyspark.driver.python", '/usr/local/python3.11.3/bin/python3.11')
+        spark_conf.set("spark.pyspark.python", '/usr/local/python3.11.3/bin/python3.11')
 
         # AWS S3 Support
         if aws_check_credentials(verbose=verbose):
