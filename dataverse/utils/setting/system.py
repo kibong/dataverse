@@ -129,15 +129,15 @@ class SystemSetting:
         self.IS_CLI = False
 
         # AWS SETTING
-        self.AWS_BUCKET = self._get_aws_bucket()
+        # self.AWS_BUCKET = self._get_aws_bucket()
 
-        # SPARK VERSION
-        self.SPARK_VERSION = pyspark.__version__
+        # # SPARK VERSION
+        # self.SPARK_VERSION = pyspark.__version__
 
-        # HADOOP VERSION
-        jars = Path(pyspark.__file__).parent / "jars"
-        hadoop_jar = list(jars.glob("hadoop-client-runtime*.jar"))
-        self.HADOOP_VERSION = re.findall(r"\d+\.\d+\.\d+", hadoop_jar[0].name)[-1]
+        # # HADOOP VERSION
+        # jars = Path(pyspark.__file__).parent / "jars"
+        # hadoop_jar = list(jars.glob("hadoop-client-runtime*.jar"))
+        # self.HADOOP_VERSION = re.findall(r"\d+\.\d+\.\d+", hadoop_jar[0].name)[-1]
 
         # TODO: add more default setting here
         ...
