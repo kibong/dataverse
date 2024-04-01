@@ -14,7 +14,7 @@ jsonl_files = ['s3://team-model-data-preprocess/moreh_corous_jsonl/cc-100_한국
 save_path = 's3://team-model-data-preprocess/moreh_corpus_processed/0401'
 
 # Function to write filter statistics to S3
-def write_log_to_s3(initial_count, pre_filter_count, post_filter_count, filter_name, log_path):
+def write_log_to_s3(filter_name, pre_filter_count, post_filter_count, initial_count):
     filtered_out_this_step = pre_filter_count - post_filter_count
     percent_filtered_this_step = (filtered_out_this_step / pre_filter_count) * 100 if pre_filter_count else 0
     filtered_out_total = initial_count - post_filter_count
@@ -27,7 +27,7 @@ def write_log_to_s3(initial_count, pre_filter_count, post_filter_count, filter_n
 
     # Generate a timestamp for the log file to ensure uniqueness
     
-    log_file_path = f"{log_path}{filter_name.replace(' ', '_')}_log.txt"
+    log_file_path = f"{save_path}/{filter_name.replace(' ', '_')}_log.txt"
     
     # Create a DataFrame with the log message
     log_df = spark.createDataFrame([Row(log_message=log_message)])
@@ -60,6 +60,7 @@ word_len_filter = etl_pipeline.get('cleaning___length___word_len_filter')
 data = word_len_filter()(spark, data, min_len=50, max_len=100000)
 pre_count = post_count 
 post_count = data.count()
+
 write_log_to_s3('Word Length Filter', pre_count, post_count, initial_count)
 
 # cleaning___length___mean_word_len_filter
