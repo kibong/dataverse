@@ -102,3 +102,60 @@ def cleaning___length___word_len_filter(
         data = data.filter(lambda row: min_len <= len(row[subset].split()))
 
     return data
+
+
+@register_etl
+def cleaning___length___mean_word_len_filter(
+    spark,
+    data: Union[RDD, DataFrame],
+    subset: str = "text",
+    min_len: int = None,
+    max_len: int = None,
+    *args,
+    **kwargs
+) -> RDD:
+    """
+    Filters the data by mean word length.
+
+    Args:
+        spark (SparkSession): The Spark session object.
+        data (Union[RDD, DataFrame]): The input data to be processed.
+        subset (str, optional): A subset or column to consider. Defaults to 'text'.
+        min_len (int, optional): The minimum mean length of words to filter. If None, there is no minimum length.
+        max_len (int, optional): The maximum mean length of words to filter. If None, there is no maximum length.
+
+    Returns:
+        The filtered data as an RDD.
+
+    Raises:
+        ValueError: If both min_len and max_len are None.
+
+    Note:
+        - min_len <= mean word length <= max_len
+        - min_len and max_len can not be None at the same time.
+        - If min_len is None, then only the maximum mean word length is considered.
+        - If max_len is None, then only the minimum mean word length is considered.
+    """
+    if isinstance(data, DataFrame):
+        data = data.rdd
+        data = data.map(lambda row: row.asDict())
+
+    assert (
+        min_len is not None or max_len is not None
+    ), "min_len and max_len cannot be None at the same time"
+
+    def mean_word_length(text):
+        words = text.split()
+        if words:
+            return sum(len(word) for word in words) / len(words)
+        else:
+            return 0
+
+    if min_len is not None and max_len is not None:
+        data = data.filter(lambda row: min_len <= mean_word_length(row[subset]) <= max_len)
+    elif min_len is None:
+        data = data.filter(lambda row: mean_word_length(row[subset]) <= max_len)
+    elif max_len is None:
+        data = data.filter(lambda row: min_len <= mean_word_length(row[subset]))
+
+    return data
