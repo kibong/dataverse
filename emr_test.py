@@ -1,4 +1,5 @@
 import boto3
+import datetime
 from dataverse.etl import ETLPipeline
 etl_pipeline = ETLPipeline()
 
@@ -12,7 +13,9 @@ jsonl_files = ['s3://team-model-data-preprocess/moreh_corous_jsonl/cc-100_한국
                's3://team-model-data-preprocess/moreh_corous_jsonl/모레_하반기_데이터수집_네이버블로그_data116.jsonl', # 745MB
                's3://team-model-data-preprocess/moreh_corous_jsonl/모레_하반기_데이터수집_국내특허본문_키프리스_2023.jsonl', # 823MB
                ]
-save_path = 's3://team-model-data-preprocess/moreh_corpus_processed/0401'
+
+timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+save_path = f's3://team-model-data-preprocess/moreh_corpus_processed/emr_test_{timestamp}'
 log_messages = []
 
 # Modified function to accumulate log messages instead of writing them immediately
