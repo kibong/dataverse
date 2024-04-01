@@ -1,3 +1,4 @@
+import boto3
 from dataverse.etl import ETLPipeline
 etl_pipeline = ETLPipeline()
 
@@ -12,9 +13,10 @@ jsonl_files = ['s3://team-model-data-preprocess/moreh_corous_jsonl/cc-100_한국
                's3://team-model-data-preprocess/moreh_corous_jsonl/모레_하반기_데이터수집_국내특허본문_키프리스_2023.jsonl', # 823MB
                ]
 save_path = 's3://team-model-data-preprocess/moreh_corpus_processed/0401'
+log_messages = []
 
-# Function to write filter statistics to S3
-def write_log_to_s3(filter_name, pre_filter_count, post_filter_count, initial_count):
+# Modified function to accumulate log messages instead of writing them immediately
+def accumulate_log_message(filter_name, pre_filter_count, post_filter_count, initial_count):
     filtered_out_this_step = pre_filter_count - post_filter_count
     percent_filtered_this_step = (filtered_out_this_step / pre_filter_count) * 100 if pre_filter_count else 0
     filtered_out_total = initial_count - post_filter_count
@@ -24,16 +26,18 @@ def write_log_to_s3(filter_name, pre_filter_count, post_filter_count, initial_co
                   f"Before this filter: {pre_filter_count}, After this filter: {post_filter_count}\n" \
                   f"Filtered out by this step: {filtered_out_this_step} rows ({percent_filtered_this_step:.2f}%)\n" \
                   f"Initial count: {initial_count}, Current total filtered: {filtered_out_total} rows ({percent_filtered_total:.2f}% of initial)"
+    
+    log_messages.append(log_message)
 
-    # Generate a timestamp for the log file to ensure uniqueness
+# Function to write all accumulated log messages to a single text file in S3
+def write_logs_to_s3():
+    s3 = boto3.resource('s3')
+    full_log_message = "\n\n".join(log_messages)
+    bucket_name = save_path.split('/')[2]
+    log_file_path = '/'.join(save_path.split('/')[3:]) + "/filter_log.txt"
     
-    log_file_path = f"{save_path}/{filter_name.replace(' ', '_')}_log.txt"
-    
-    # Create a DataFrame with the log message
-    log_df = spark.createDataFrame([Row(log_message=log_message)])
-    
-    # Write the log message to S3
-    log_df.coalesce(1).write.mode("overwrite").text(log_file_path)
+    obj = s3.Object(bucket_name, log_file_path)
+    obj.put(Body=full_log_message.encode('utf-8'))
 
 # load dataset from S3
 load = etl_pipeline.get('data_ingestion___jsonl___jsonl2raw')
@@ -47,7 +51,7 @@ lang_filter = etl_pipeline.get('quality___language___fasttext_filter')
 data = lang_filter()(spark, data, whitelist=['ko'], threshold=0.5)
 pre_count = post_count
 post_count = data.count()
-write_log_to_s3('Language Filter', pre_count, post_count, initial_count)
+accumulate_log_message('Language Filter', pre_count, post_count, initial_count)
 '''
 
 
@@ -60,8 +64,7 @@ word_len_filter = etl_pipeline.get('cleaning___length___word_len_filter')
 data = word_len_filter()(spark, data, min_len=50, max_len=100000)
 pre_count = post_count 
 post_count = data.count()
-
-write_log_to_s3('Word Length Filter', pre_count, post_count, initial_count)
+accumulate_log_message('Word Length Filter', pre_count, post_count, initial_count)
 
 # cleaning___length___mean_word_len_filter
 # mean word length filter
@@ -69,7 +72,7 @@ mean_word_len_filter = etl_pipeline.get('cleaning___length___mean_word_len_filte
 data = mean_word_len_filter()(spark, data, min_len=2, max_len=8)
 pre_count = post_count
 post_count = data.count()
-write_log_to_s3('Mean Word Length Filter', pre_count, post_count, initial_count)
+accumulate_log_message('Mean Word Length Filter', pre_count, post_count, initial_count)
 
 # cleaning___html___extract_plain_text
 # Extracts plain text from HTML
@@ -77,14 +80,14 @@ html_filter = etl_pipeline.get('cleaning___html___extract_plain_text')
 data = html_filter()(spark, data)
 pre_count = post_count
 post_count = data.count()
-write_log_to_s3('HTML Extract Filter', pre_count, post_count, initial_count)
+accumulate_log_message('HTML Extract Filter', pre_count, post_count, initial_count)
 
 # cleaning___korean___reduce_emoticon
 reduce_emoticon_filter = etl_pipeline.get('cleaning___korean___reduce_emoticon')
 data = reduce_emoticon_filter()(spark, data)
 pre_count = post_count
 post_count = data.count()
-write_log_to_s3('Reduce Emoticon Filter', pre_count, post_count, initial_count)
+accumulate_log_message('Reduce Emoticon Filter', pre_count, post_count, initial_count)
 
 
 # dedup filter
@@ -95,7 +98,7 @@ exact_dedup = etl_pipeline.get('deduplication___exact___column')
 data = exact_dedup()(spark, data)
 pre_count = post_count
 post_count = data.count()
-write_log_to_s3('Exact Dedup Filter', pre_count, post_count, initial_count)
+accumulate_log_message('Exact Dedup Filter', pre_count, post_count, initial_count)
 
 # deduplication___minhash___lsh_jaccard
 # fussy dedup
@@ -103,7 +106,7 @@ fussy_dedup = etl_pipeline.get('deduplication___minhash___lsh_jaccard')
 data = fussy_dedup()(spark, data)
 pre_count = post_count
 post_count = data.count()
-write_log_to_s3('Fussy Dedup Filter', pre_count, post_count, initial_count)
+accumulate_log_message('Fussy Dedup Filter', pre_count, post_count, initial_count)
 
 
 
@@ -113,11 +116,11 @@ bad_word_filter = etl_pipeline.get('cleaning___content___bad_words_filter')
 data = bad_word_filter()(spark, data)
 pre_count = post_count
 post_count = data.count()
-write_log_to_s3('Bad Word Filter', pre_count, post_count, initial_count)
+accumulate_log_message('Bad Word Filter', pre_count, post_count, initial_count)
 
 
 # save dataset to S3
 save = etl_pipeline.get('data_save___jsonl___ufl2jsonl')
 data = save()(spark, data, save_path, repartition=1)
-
+write_logs_to_s3()
 
