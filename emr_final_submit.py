@@ -119,6 +119,6 @@ accumulate_log_message('Bad Word Filter', pre_count, post_count, initial_count)
 
 # save dataset to S3
 save = etl_pipeline.get('data_save___jsonl___ufl2jsonl')
-data = save()(spark, data, save_path, repartition=1)
+data = save()(spark, data, save_path, repartition=512)
 write_logs_to_s3()
 
