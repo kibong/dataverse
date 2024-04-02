@@ -74,11 +74,13 @@ accumulate_log_message('Mean Word Length Filter', pre_count, post_count, initial
 
 # cleaning___html___extract_plain_text
 # Extracts plain text from HTML
+'''
 html_filter = etl_pipeline.get('cleaning___html___extract_plain_text')
 data = html_filter()(spark, data)
 pre_count = post_count
 post_count = data.count()
 accumulate_log_message('HTML Extract Filter', pre_count, post_count, initial_count)
+'''
 
 # cleaning___korean___reduce_emoticon
 reduce_emoticon_filter = etl_pipeline.get('cleaning___korean___reduce_emoticon')
