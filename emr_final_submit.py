@@ -41,7 +41,7 @@ def write_logs_to_s3():
 
 # load dataset from S3
 load = etl_pipeline.get('data_ingestion___jsonl___jsonl2raw')
-data = load()(spark, path=jsonl_files)
+data = load()(spark, path=jsonl_files, repartition=1024)
 initial_count = data.count()
 post_count = initial_count
 
